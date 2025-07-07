@@ -84,6 +84,10 @@ export class BookService {
         category: book.category,
         price: book.price,
         description: book.description,
+        image_url: book.image_url,
+        file_url: book.file_url,
+        file_name: book.file_name,
+        file_size: book.file_size,
         updated_at: new Date().toISOString(),
       })
       .eq('id', book.id)

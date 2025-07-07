@@ -48,7 +48,44 @@ const Dashboard: React.FC = () => {
 
   const loadBooks = async () => {
     try {
-      const booksData = await bookService.getAllBooks(filters);
+      // Only load books for the current user in the writers dashboard
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('books')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(`Failed to fetch books: ${error.message}`);
+      }
+
+      let filteredBooks = data || [];
+
+      // Apply client-side filtering
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        filteredBooks = filteredBooks.filter(book => 
+          book.name.toLowerCase().includes(searchLower) ||
+          book.description.toLowerCase().includes(searchLower)
+        );
+      }
+
+      if (filters.category) {
+        filteredBooks = filteredBooks.filter(book => book.category === filters.category);
+      }
+
+      if (filters.minPrice !== undefined) {
+        filteredBooks = filteredBooks.filter(book => book.price >= filters.minPrice!);
+      }
+
+      if (filters.maxPrice !== undefined) {
+        filteredBooks = filteredBooks.filter(book => book.price <= filters.maxPrice!);
+      }
+
+      setBooks(filteredBooks);
       setBooks(booksData);
       setError('');
     } catch (err: any) {

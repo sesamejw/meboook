@@ -19,6 +19,10 @@ export interface Database {
           user_id: string
           created_at: string
           updated_at: string
+          image_url: string | null
+          file_url: string | null
+          file_name: string | null
+          file_size: number | null
         }
         Insert: {
           id?: string
@@ -29,6 +33,10 @@ export interface Database {
           user_id: string
           created_at?: string
           updated_at?: string
+          image_url?: string | null
+          file_url?: string | null
+          file_name?: string | null
+          file_size?: number | null
         }
         Update: {
           id?: string
@@ -39,6 +47,10 @@ export interface Database {
           user_id?: string
           created_at?: string
           updated_at?: string
+          image_url?: string | null
+          file_url?: string | null
+          file_name?: string | null
+          file_size?: number | null
         }
       }
     }

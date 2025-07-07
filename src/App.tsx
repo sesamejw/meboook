@@ -4,6 +4,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import Store from './components/Store';
+import DownloadPage from './components/DownloadPage';
 
 function App() {
   return (
@@ -11,16 +13,17 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
+            <Route path="/" element={<Store />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/download/:bookId" element={<DownloadPage />} />
             <Route 
-              path="/dashboard" 
+              path="/writers" 
               element={
                 <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
               } 
             />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
       </Router>

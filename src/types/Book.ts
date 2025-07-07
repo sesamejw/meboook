@@ -9,6 +9,10 @@ export interface CreateBookRequest {
   category: string;
   price: number;
   description: string;
+  image_url?: string;
+  file_url?: string;
+  file_name?: string;
+  file_size?: number;
 }
 
 export interface UpdateBookRequest {
@@ -17,6 +21,10 @@ export interface UpdateBookRequest {
   category: string;
   price: number;
   description: string;
+  image_url?: string;
+  file_url?: string;
+  file_name?: string;
+  file_size?: number;
 }
 
 export interface BookFilters {
