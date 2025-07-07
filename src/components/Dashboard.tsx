@@ -195,9 +195,9 @@ const Dashboard: React.FC = () => {
           <Container>
             <h1 className="display-4 mb-2">
               <BookOpen className="me-3" size={48} />
-              Book Store Dashboard
+              Writers Dashboard
             </h1>
-            <p className="lead">Manage your personal book collection</p>
+            <p className="lead">Manage your published books</p>
           </Container>
         </div>
 
