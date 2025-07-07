@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
-import { Book } from '../types/Book';
-import { bookService } from '../services/bookService';
-import { storageService } from '../services/storageService';
+import { Book, apiService } from '../services/apiService';
 import Navbar from './Navbar';
 import { Download, ArrowLeft, DollarSign, Calendar, User, FileText, Image } from 'lucide-react';
 
+/**
+ * DownloadPage Component
+ * This component displays detailed information about a specific book and
+ * provides functionality to download the book file. It's accessible to all users.
+ */
 const DownloadPage: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
@@ -15,18 +18,22 @@ const DownloadPage: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
 
+  // Load book data when component mounts or bookId changes
   useEffect(() => {
     if (bookId) {
       loadBook();
     }
   }, [bookId]);
 
+  /**
+   * Load book details from the API
+   */
   const loadBook = async () => {
     if (!bookId) return;
 
     try {
       setLoading(true);
-      const bookData = await bookService.getBookById(bookId);
+      const bookData = await apiService.getBookById(bookId);
       setBook(bookData);
       setError('');
     } catch (err: any) {
@@ -37,15 +44,19 @@ const DownloadPage: React.FC = () => {
     }
   };
 
+  /**
+   * Handle book file download
+   * Triggers the browser's download functionality for the book file
+   */
   const handleDownload = async () => {
-    if (!book || !book.file_url || !book.file_name) {
+    if (!book || !book.fileUrl || !book.fileName) {
       setError('No file available for download');
       return;
     }
 
     try {
       setDownloading(true);
-      await storageService.downloadFile(book.file_url, book.file_name);
+      await apiService.downloadFile(book.fileUrl, book.fileName);
     } catch (err: any) {
       setError('Failed to download file. Please try again.');
       console.error('Download error:', err);
@@ -54,6 +65,9 @@ const DownloadPage: React.FC = () => {
     }
   };
 
+  /**
+   * Format file size in human-readable format
+   */
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -62,6 +76,9 @@ const DownloadPage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  /**
+   * Format price as currency
+   */
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -69,12 +86,16 @@ const DownloadPage: React.FC = () => {
     }).format(price);
   };
 
+  /**
+   * Get a consistent color for book category badges
+   */
   const getCategoryColor = (category: string) => {
     const colors = ['primary', 'success', 'info', 'warning', 'secondary', 'danger'];
     const index = category.length % colors.length;
     return colors[index];
   };
 
+  // Show loading spinner while book data is being fetched
   if (loading) {
     return (
       <div>
@@ -88,6 +109,7 @@ const DownloadPage: React.FC = () => {
     );
   }
 
+  // Show error message if book is not found
   if (!book) {
     return (
       <div>
@@ -127,10 +149,10 @@ const DownloadPage: React.FC = () => {
         <Row>
           <Col lg={4}>
             <Card className="mb-4">
-              {book.image_url ? (
+              {book.imageUrl ? (
                 <Card.Img 
                   variant="top" 
-                  src={book.image_url} 
+                  src={book.imageUrl} 
                   alt={book.name}
                   style={{ height: '400px', objectFit: 'cover' }}
                 />
@@ -174,31 +196,31 @@ const DownloadPage: React.FC = () => {
                     <div className="d-flex align-items-center mb-3">
                       <Calendar size={20} className="text-info me-2" />
                       <div>
-                        <strong>{new Date(book.created_at).toLocaleDateString()}</strong>
+                        <strong>{new Date(book.createdAt).toLocaleDateString()}</strong>
                         <div className="text-muted small">Published</div>
                       </div>
                     </div>
                   </Col>
                 </Row>
 
-                {book.file_url && (
+                {book.fileUrl && (
                   <div className="mb-4">
                     <h5 className="text-muted mb-3">File Information</h5>
                     <div className="d-flex align-items-center mb-2">
                       <FileText size={16} className="text-primary me-2" />
-                      <span><strong>Filename:</strong> {book.file_name || 'Unknown'}</span>
+                      <span><strong>Filename:</strong> {book.fileName || 'Unknown'}</span>
                     </div>
-                    {book.file_size && (
+                    {book.fileSize && (
                       <div className="d-flex align-items-center mb-3">
                         <FileText size={16} className="text-primary me-2" />
-                        <span><strong>File Size:</strong> {formatFileSize(book.file_size)}</span>
+                        <span><strong>File Size:</strong> {formatFileSize(book.fileSize)}</span>
                       </div>
                     )}
                   </div>
                 )}
 
                 <div className="d-grid">
-                  {book.file_url ? (
+                  {book.fileUrl ? (
                     <Button
                       variant="primary"
                       size="lg"

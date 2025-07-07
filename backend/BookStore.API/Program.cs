@@ -11,6 +11,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
+// Configure static file serving for uploaded files
+builder.Services.Configure<StaticFileOptions>(options =>
+{
+    options.ServeUnknownFileTypes = true;
+    options.DefaultContentType = "application/octet-stream";
+});
+
 // Add Entity Framework
 builder.Services.AddDbContext<BookStoreContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -74,6 +81,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Enable static file serving for uploaded files
+app.UseStaticFiles();
 
 app.UseCors("AllowReactApp");
 

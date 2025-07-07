@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert } from 'react-bootstrap';
-import { Book, CreateBookRequest, UpdateBookRequest } from '../types/Book';
-import { bookService } from '../services/bookService';
-import { storageService } from '../services/storageService';
+import { Book, CreateBookRequest, UpdateBookRequest, apiService } from '../services/apiService';
 import { BookOpen, DollarSign, Tag, FileText, Upload, Image } from 'lucide-react';
 
 interface BookFormProps {
@@ -12,6 +10,12 @@ interface BookFormProps {
   onSave: () => void;
 }
 
+/**
+ * BookForm Component
+ * This component provides a modal form for creating and editing books.
+ * It handles file uploads for both book cover images and book files,
+ * and communicates with the .NET Core API for data persistence.
+ */
 const BookForm: React.FC<BookFormProps> = ({ show, onHide, book, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -25,16 +29,19 @@ const BookForm: React.FC<BookFormProps> = ({ show, onHide, book, onSave }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Initialize form data when the modal opens or when editing a book
   useEffect(() => {
     if (book) {
+      // Populate form with existing book data for editing
       setFormData({
         name: book.name,
         category: book.category,
         price: book.price.toString(),
         description: book.description,
       });
-      setImagePreview(book.image_url || '');
+      setImagePreview(book.imageUrl || '');
     } else {
+      // Reset form for creating a new book
       setFormData({
         name: '',
         category: '',
@@ -43,11 +50,16 @@ const BookForm: React.FC<BookFormProps> = ({ show, onHide, book, onSave }) => {
       });
       setImagePreview('');
     }
+    // Reset file inputs and error state
     setImageFile(null);
     setBookFile(null);
     setError('');
   }, [book, show]);
 
+  /**
+   * Handle form input changes
+   * Updates the form state when user types in input fields
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -56,11 +68,17 @@ const BookForm: React.FC<BookFormProps> = ({ show, onHide, book, onSave }) => {
     }));
   };
 
+  /**
+   * Handle image file selection
+   * Validates the selected file and creates a preview
+   */
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate that the selected file is an image
       if (file.type.startsWith('image/')) {
         setImageFile(file);
+        // Create a preview of the selected image
         const reader = new FileReader();
         reader.onload = (e) => {
           setImagePreview(e.target?.result as string);
@@ -72,6 +90,10 @@ const BookForm: React.FC<BookFormProps> = ({ show, onHide, book, onSave }) => {
     }
   };
 
+  /**
+   * Handle book file selection
+   * Stores the selected book file for upload
+   */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -87,65 +109,73 @@ const BookForm: React.FC<BookFormProps> = ({ show, onHide, book, onSave }) => {
       const price = parseFloat(formData.price);
       if (isNaN(price) || price < 0) {
         throw new Error('Please enter a valid price');
+      // Validate price input
       }
 
       let imageUrl = book?.image_url || '';
       let fileUrl = book?.file_url || '';
       let fileName = book?.file_name || '';
-      let fileSize = book?.file_size || 0;
+      // Initialize file-related variables with existing values (for updates)
+      let imageUrl = book?.imageUrl || '';
+      let fileUrl = book?.fileUrl || '';
+      let fileName = book?.fileName || '';
+      let fileSize = book?.fileSize || 0;
 
-      // Generate a temporary ID for new books
-      const tempId = book?.id || `temp-${Date.now()}`;
-
-      // Upload image if provided
-      if (imageFile) {
+      // Generate a temporary ID for organizing uploaded files
+      const tempId = book?.id || undefined;
         imageUrl = await storageService.uploadBookImage(imageFile, tempId);
-      }
+      // Upload new image if one was selected
 
-      // Upload file if provided
+        const imageUploadResponse = await apiService.uploadBookImage(imageFile, tempId);
+        imageUrl = imageUploadResponse.url;
       if (bookFile) {
         const fileData = await storageService.uploadBookFile(bookFile, tempId);
-        fileUrl = fileData.url;
+      // Upload new book file if one was selected
         fileName = fileData.fileName;
-        fileSize = fileData.fileSize;
-      }
-      if (book) {
-        // Update existing book
+        const fileUploadResponse = await apiService.uploadBookFile(bookFile, tempId);
+        fileUrl = fileUploadResponse.url;
+        fileName = fileUploadResponse.fileName;
+        fileSize = fileUploadResponse.size;
         const updateData: UpdateBookRequest = {
           id: book.id,
           name: formData.name.trim(),
-          category: formData.category,
-          price: price,
-          description: formData.description.trim(),
+        // Update existing book via API
+        const updateData: UpdateBookRequest = {
           image_url: imageUrl,
           file_url: fileUrl,
-          file_name: fileName,
+          price,
           file_size: fileSize,
-        };
-        await bookService.updateBook(updateData);
-      } else {
-        // Create new book
+          imageUrl,
+          fileUrl,
+          fileName,
+          fileSize,
         const createData: CreateBookRequest = {
-          name: formData.name.trim(),
+        await apiService.updateBook(book.id, updateData);
           category: formData.category,
-          price: price,
+        // Create new book via API
           description: formData.description.trim(),
           image_url: imageUrl,
           file_url: fileUrl,
-          file_name: fileName,
+          price,
           file_size: fileSize,
-        };
-        await bookService.createBook(createData);
-      }
-
+          imageUrl,
+          fileUrl,
+          fileName,
+          fileSize,
       onSave();
-    } catch (err: any) {
+        await apiService.createBook(createData);
       setError(err.message || 'Failed to save book. Please try again.');
     } finally {
+      // Notify parent component that the operation was successful
       setLoading(false);
     }
   };
 
+  /**
+   * Handle form submission
+   * Processes the form data, uploads files, and creates/updates the book
+   */
+  // Predefined list of book categories for the dropdown
   const commonCategories = [
     'Fiction',
     'Non-Fiction',
@@ -303,10 +333,10 @@ const BookForm: React.FC<BookFormProps> = ({ show, onHide, book, onSave }) => {
             <Form.Text className="text-muted">
               Upload the book file (PDF, EPUB, DOCX, etc.)
             </Form.Text>
-            {book?.file_name && !bookFile && (
+            {book?.fileName && !bookFile && (
               <div className="mt-2">
                 <small className="text-success">
-                  Current file: {book.file_name}
+                  Current file: {book.fileName}
                 </small>
               </div>
             )}

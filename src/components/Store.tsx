@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Badge, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { Book, BookFilters } from '../types/Book';
-import { bookService } from '../services/bookService';
+import { Book, BookFilters, apiService } from '../services/apiService';
 import Navbar from './Navbar';
 import { Search, DollarSign, Download, BookOpen, Filter } from 'lucide-react';
 
+/**
+ * Store Component
+ * This component displays the public book store where all users can browse
+ * and view books from all authors. It provides filtering capabilities and
+ * navigation to individual book download pages.
+ */
 const Store: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,14 +19,19 @@ const Store: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const navigate = useNavigate();
 
+  // Load initial data when component mounts
   useEffect(() => {
     loadInitialData();
   }, []);
 
+  // Reload books when filters change
   useEffect(() => {
     loadBooks();
   }, [filters]);
 
+  /**
+   * Load all initial data including books and categories
+   */
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -37,9 +47,13 @@ const Store: React.FC = () => {
     }
   };
 
+  /**
+   * Load all books from the public store
+   * Applies any active filters to the request
+   */
   const loadBooks = async () => {
     try {
-      const booksData = await bookService.getAllBooks(filters);
+      const booksData = await apiService.getAllBooks(filters);
       setBooks(booksData);
       setError('');
     } catch (err: any) {
@@ -48,15 +62,21 @@ const Store: React.FC = () => {
     }
   };
 
+  /**
+   * Load all available book categories
+   */
   const loadCategories = async () => {
     try {
-      const categoriesData = await bookService.getCategories();
+      const categoriesData = await apiService.getCategories();
       setCategories(categoriesData);
     } catch (err: any) {
       console.error('Error loading categories:', err);
     }
   };
 
+  /**
+   * Handle filter changes and update the filters state
+   */
   const handleFilterChange = (key: keyof BookFilters, value: string | number | undefined) => {
     setFilters(prev => ({
       ...prev,
@@ -64,20 +84,32 @@ const Store: React.FC = () => {
     }));
   };
 
+  /**
+   * Clear all active filters
+   */
   const clearFilters = () => {
     setFilters({});
   };
 
+  /**
+   * Navigate to the book download page
+   */
   const handleBookClick = (book: Book) => {
     navigate(`/download/${book.id}`);
   };
 
+  /**
+   * Get a consistent color for book category badges
+   */
   const getCategoryColor = (category: string) => {
     const colors = ['primary', 'success', 'info', 'warning', 'secondary', 'danger'];
     const index = category.length % colors.length;
     return colors[index];
   };
 
+  /**
+   * Format price as currency
+   */
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -85,6 +117,7 @@ const Store: React.FC = () => {
     }).format(price);
   };
 
+  // Show loading spinner while data is being fetched
   if (loading) {
     return (
       <div>
@@ -216,10 +249,10 @@ const Store: React.FC = () => {
                   onClick={() => handleBookClick(book)}
                   style={{ cursor: 'pointer' }}
                 >
-                  {book.image_url && (
+                  {book.imageUrl && (
                     <Card.Img 
                       variant="top" 
-                      src={book.image_url} 
+                      src={book.imageUrl} 
                       style={{ height: '200px', objectFit: 'cover' }}
                       alt={book.name}
                     />
@@ -245,7 +278,7 @@ const Store: React.FC = () => {
                           <strong>{formatPrice(book.price)}</strong>
                         </div>
                         <small className="text-muted">
-                          {new Date(book.created_at).toLocaleDateString()}
+                          {new Date(book.createdAt).toLocaleDateString()}
                         </small>
                       </div>
                       

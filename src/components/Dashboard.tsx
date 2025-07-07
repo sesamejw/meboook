@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, Alert, Modal, Badge } from 'react-bootstrap';
-import { Book, BookFilters } from '../types/Book';
-import { bookService } from '../services/bookService';
+import { Book, BookFilters, apiService } from '../services/apiService';
 import BookForm from './BookForm';
 import Navbar from './Navbar';
 import { Search, Plus, Edit, Trash2, BookOpen, DollarSign, TrendingUp, Hash, Layers } from 'lucide-react';
 
+/**
+ * Dashboard Component
+ * This component provides the writers dashboard where authenticated users can
+ * manage their published books. It includes functionality for viewing, creating,
+ * editing, and deleting books, as well as displaying statistics.
+ */
 const Dashboard: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,14 +27,19 @@ const Dashboard: React.FC = () => {
     categoriesCount: 0,
   });
 
+  // Load initial data when component mounts
   useEffect(() => {
     loadInitialData();
   }, []);
 
+  // Reload books when filters change
   useEffect(() => {
     loadBooks();
   }, [filters]);
 
+  /**
+   * Load all initial data including books, categories, and statistics
+   */
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -46,46 +56,14 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  /**
+   * Load books belonging to the current user
+   * Applies any active filters to the request
+   */
   const loadBooks = async () => {
     try {
-      // Only load books for the current user in the writers dashboard
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data, error } = await supabase
-        .from('books')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw new Error(`Failed to fetch books: ${error.message}`);
-      }
-
-      let filteredBooks = data || [];
-
-      // Apply client-side filtering
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        filteredBooks = filteredBooks.filter(book => 
-          book.name.toLowerCase().includes(searchLower) ||
-          book.description.toLowerCase().includes(searchLower)
-        );
-      }
-
-      if (filters.category) {
-        filteredBooks = filteredBooks.filter(book => book.category === filters.category);
-      }
-
-      if (filters.minPrice !== undefined) {
-        filteredBooks = filteredBooks.filter(book => book.price >= filters.minPrice!);
-      }
-
-      if (filters.maxPrice !== undefined) {
-        filteredBooks = filteredBooks.filter(book => book.price <= filters.maxPrice!);
-      }
-
-      setBooks(filteredBooks);
+      // Load books for the current user with applied filters
+      const booksData = await apiService.getMyBooks(filters);
       setBooks(booksData);
       setError('');
     } catch (err: any) {
@@ -94,24 +72,43 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  /**
+   * Load all available book categories
+   */
   const loadCategories = async () => {
     try {
-      const categoriesData = await bookService.getCategories();
+      const categoriesData = await apiService.getCategories();
       setCategories(categoriesData);
     } catch (err: any) {
       console.error('Error loading categories:', err);
     }
   };
 
+  /**
+   * Calculate and load statistics for the user's books
+   */
   const loadStats = async () => {
     try {
-      const statsData = await bookService.getBookStats();
-      setStats(statsData);
+      // Get all user's books to calculate statistics
+      const allBooks = await apiService.getMyBooks();
+      
+      const totalBooks = allBooks.length;
+      const totalValue = allBooks.reduce((sum, book) => sum + book.price, 0);
+      const categoriesCount = new Set(allBooks.map(book => book.category)).size;
+      
+      setStats({
+        totalBooks,
+        totalValue,
+        categoriesCount,
+      });
     } catch (err: any) {
       console.error('Error loading stats:', err);
     }
   };
 
+  /**
+   * Handle filter changes and update the filters state
+   */
   const handleFilterChange = (key: keyof BookFilters, value: string | number | undefined) => {
     setFilters(prev => ({
       ...prev,
@@ -119,30 +116,45 @@ const Dashboard: React.FC = () => {
     }));
   };
 
+  /**
+   * Clear all active filters
+   */
   const clearFilters = () => {
     setFilters({});
   };
 
+  /**
+   * Open the book form modal for creating a new book
+   */
   const handleAddBook = () => {
     setEditingBook(null);
     setShowBookForm(true);
   };
 
+  /**
+   * Open the book form modal for editing an existing book
+   */
   const handleEditBook = (book: Book) => {
     setEditingBook(book);
     setShowBookForm(true);
   };
 
+  /**
+   * Open the delete confirmation modal
+   */
   const handleDeleteBook = (book: Book) => {
     setBookToDelete(book);
     setShowDeleteModal(true);
   };
 
+  /**
+   * Confirm and execute book deletion
+   */
   const confirmDelete = async () => {
     if (!bookToDelete) return;
 
     try {
-      await bookService.deleteBook(bookToDelete.id);
+      await apiService.deleteBook(bookToDelete.id);
       await loadInitialData();
       setShowDeleteModal(false);
       setBookToDelete(null);
@@ -151,22 +163,34 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  /**
+   * Close the book form modal
+   */
   const handleBookFormClose = () => {
     setShowBookForm(false);
     setEditingBook(null);
   };
 
+  /**
+   * Handle successful book save operation
+   */
   const handleBookSaved = () => {
     loadInitialData();
     handleBookFormClose();
   };
 
+  /**
+   * Get a consistent color for book category badges
+   */
   const getCategoryColor = (category: string) => {
     const colors = ['primary', 'success', 'info', 'warning', 'secondary', 'danger'];
     const index = category.length % colors.length;
     return colors[index];
   };
 
+  /**
+   * Format price as currency
+   */
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -174,6 +198,7 @@ const Dashboard: React.FC = () => {
     }).format(price);
   };
 
+  // Show loading spinner while data is being fetched
   if (loading) {
     return (
       <div>
