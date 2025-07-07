@@ -1,6 +1,6 @@
 # Book Store Application
 
-A modern web application for buying, selling, and managing digital books. Built with React, TypeScript, and Supabase.
+A modern web application for buying, selling, and managing digital books. Built with React, TypeScript frontend and .NET Core Web API backend.
 
 ## Features
 
@@ -18,7 +18,7 @@ A modern web application for buying, selling, and managing digital books. Built 
 
 ### 🔐 Authentication
 - **User Registration**: Create an account with email and password
-- **Secure Login**: JWT-based authentication via Supabase
+- **Secure Login**: JWT-based authentication via .NET Core API
 - **Protected Routes**: Writers dashboard requires authentication
 - **User Profiles**: Personalized experience with user metadata
 
@@ -69,12 +69,14 @@ A modern web application for buying, selling, and managing digital books. Built 
 - **Bootstrap 5** with custom CSS for responsive design
 - **Lucide React** for modern icons
 - **Vite** for fast development and building
+- **Axios** for HTTP requests to the backend API
 
 ### Backend
-- **Supabase** for database, authentication, and file storage
+- **.NET Core 8** Web API with Entity Framework Core
 - **PostgreSQL** database with Row Level Security (RLS)
-- **Supabase Auth** for user management
-- **Supabase Storage** for file and image hosting
+- **JWT Authentication** for secure user management
+- **File Upload System** for handling book images and files
+- **BCrypt** for secure password hashing
 
 ### Database Schema
 
@@ -92,46 +94,57 @@ A modern web application for buying, selling, and managing digital books. Built 
 - `created_at`: Publication timestamp
 - `updated_at`: Last modification timestamp
 
+#### Users Table
+- `id`: Unique identifier (UUID)
+- `email`: User email address (unique)
+- `password_hash`: Hashed password using BCrypt
+- `full_name`: User's full name
+- `created_at`: Account creation timestamp
+- `updated_at`: Last update timestamp
+
 ### Security Features
 
-#### Row Level Security (RLS)
-- **Public Read**: Anyone can view books in the store
-- **Authenticated Write**: Only logged-in users can create books
-- **Owner Only**: Users can only edit/delete their own books
+#### Authentication & Authorization
+- **JWT Tokens**: Secure token-based authentication
+- **Password Hashing**: BCrypt with salt for secure password storage
+- **Protected Endpoints**: API endpoints require valid JWT tokens
+- **User Ownership**: Users can only modify their own books
 
 #### File Storage Security
-- **Separate Buckets**: Images and files stored in different buckets
-- **Public Access**: Book covers are publicly accessible
-- **Secure Downloads**: Book files are served through secure URLs
+- **Separate Directories**: Images and files stored in different directories
+- **File Type Validation**: Only allowed file types can be uploaded
+- **Size Limits**: Maximum file sizes enforced (5MB for images, 100MB for books)
+- **Unique Filenames**: Prevents conflicts and unauthorized access
 
 ## File Upload System
 
 ### Supported File Types
 - **Images**: JPG, PNG, GIF for book covers
-- **Books**: PDF, EPUB, DOCX, TXT, and other document formats
+- **Books**: PDF, EPUB, DOCX, DOC, TXT, MOBI, AZW3
 
 ### Storage Structure
 ```
-book-images/
+wwwroot/uploads/images/
   ├── {bookId}-{timestamp}.jpg
   └── {bookId}-{timestamp}.png
 
-book-files/
+wwwroot/uploads/books/
   ├── {bookId}-{timestamp}.pdf
   └── {bookId}-{timestamp}.epub
 ```
 
 ### Upload Process
-1. Files are uploaded to Supabase Storage buckets
+1. Files are uploaded to the .NET Core API via multipart form data
 2. Unique filenames prevent conflicts
-3. Public URLs are generated for access
+3. Files are stored in the wwwroot directory for static serving
 4. File metadata is stored in the database
 
 ## Getting Started
 
 ### Prerequisites
 - Node.js 18+ and npm
-- Supabase account and project
+- .NET 8.0 SDK
+- PostgreSQL database
 
 ### Setup Instructions
 
@@ -141,43 +154,90 @@ book-files/
    cd bookstore-app
    ```
 
-2. **Install dependencies**
+2. **Backend Setup**
    ```bash
+   cd backend/BookStore.API
+   dotnet restore
+   ```
+
+3. **Database Configuration**
+   Update the connection string in `backend/BookStore.API/appsettings.json`:
+   ```json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Host=localhost;Database=bookstore;Username=your_username;Password=your_password"
+     }
+   }
+   ```
+
+4. **JWT Configuration**
+   Update the JWT settings in `backend/BookStore.API/appsettings.json`:
+   ```json
+   {
+     "JwtSettings": {
+       "SecretKey": "your-super-secret-jwt-key-that-should-be-at-least-32-characters-long",
+       "Issuer": "BookStore.API",
+       "Audience": "BookStore.Client",
+       "ExpirationInDays": 7
+     }
+   }
+   ```
+
+5. **Run Database Migrations**
+   ```bash
+   cd backend/BookStore.API
+   dotnet ef migrations add InitialCreate
+   dotnet ef database update
+   ```
+
+6. **Start the Backend API**
+   ```bash
+   cd backend/BookStore.API
+   dotnet run
+   ```
+   The API will be available at `https://localhost:5001`
+
+7. **Frontend Setup**
+   ```bash
+   cd ../../  # Back to root directory
    npm install
    ```
 
-3. **Configure Supabase**
-   - Create a new Supabase project
-   - Set up the database schema using the migration files
-   - Create storage buckets: `book-images` and `book-files`
-   - Configure bucket policies for public access
-
-4. **Environment Variables**
-   Create a `.env` file with:
+8. **Environment Variables**
+   Create a `.env` file in the root directory:
    ```
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_API_BASE_URL=https://localhost:5001/api
    ```
 
-5. **Run the application**
+9. **Start the Frontend**
    ```bash
    npm run dev
    ```
+   The frontend will be available at `http://localhost:5173`
 
-### Database Setup
+## API Documentation
 
-Run the migration files in your Supabase SQL editor:
-1. `supabase/migrations/20250707182058_dawn_garden.sql` - Initial schema
-2. `supabase/migrations/add_file_storage_support.sql` - File storage support
+The backend API provides the following endpoints:
 
-### Storage Bucket Setup
+### Authentication
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Authenticate a user
 
-In your Supabase dashboard:
-1. Go to Storage section
-2. Create two buckets:
-   - `book-images` (public)
-   - `book-files` (public)
-3. Set appropriate policies for public read access
+### Books
+- `GET /api/books` - Get all books (public)
+- `GET /api/books/my-books` - Get user's books (authenticated)
+- `GET /api/books/{id}` - Get a specific book
+- `POST /api/books` - Create a new book (authenticated)
+- `PUT /api/books/{id}` - Update a book (authenticated, owner only)
+- `DELETE /api/books/{id}` - Delete a book (authenticated, owner only)
+- `GET /api/books/categories` - Get all categories
+
+### File Upload
+- `POST /api/files/upload-image` - Upload book cover image (authenticated)
+- `POST /api/files/upload-book` - Upload book file (authenticated)
+- `DELETE /api/files/delete/{fileType}/{fileName}` - Delete uploaded file (authenticated)
+
+For detailed API documentation, visit the Swagger UI at `https://localhost:5001/swagger` when the backend is running.
 
 ## User Roles & Permissions
 
@@ -192,6 +252,21 @@ In your Supabase dashboard:
 - Upload and manage their own books
 - Edit/delete their published books
 
+## File Management
+
+### Upload Limits
+- **Images**: Maximum 5MB per file
+- **Books**: Maximum 100MB per file
+
+### Supported Formats
+- **Images**: JPG, JPEG, PNG, GIF, WebP
+- **Books**: PDF, EPUB, DOCX, DOC, TXT, MOBI, AZW3
+
+### Storage Location
+Files are stored in the `wwwroot/uploads` directory:
+- Images: `wwwroot/uploads/images/`
+- Books: `wwwroot/uploads/books/`
+
 ## Future Enhancements
 
 - Payment integration for book purchases
@@ -202,6 +277,32 @@ In your Supabase dashboard:
 - Book recommendations
 - Sales analytics for authors
 - Bulk upload functionality
+- Cloud storage integration (Azure Blob Storage, AWS S3)
+- Email notifications
+- Book preview functionality
+
+## Development
+
+### Backend Development
+The .NET Core API follows clean architecture principles:
+- **Controllers**: Handle HTTP requests and responses
+- **Services**: Business logic and JWT token management
+- **Repositories**: Data access layer with Entity Framework
+- **Models**: Entity definitions and database schema
+- **DTOs**: Data transfer objects for API communication
+
+### Frontend Development
+The React frontend uses modern patterns:
+- **Components**: Reusable UI components with TypeScript
+- **Services**: API communication layer with Axios
+- **Contexts**: State management with React Context
+- **Hooks**: Custom hooks for common functionality
+
+### Adding New Features
+1. **Backend**: Add new controllers, services, or repositories as needed
+2. **Database**: Create migrations for schema changes
+3. **Frontend**: Update services and components to use new API endpoints
+4. **Types**: Update TypeScript interfaces to match API changes
 
 ## Contributing
 
